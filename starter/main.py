@@ -1,11 +1,6 @@
 """
 Customer Support AI Agent — Starter Code
 ==========================================
-Your task is to complete this file by implementing all sections marked
-with # TODO comments.
-
-Reference the project instructions and rubric for guidance.
-Work through each section yourself.
 
 Run locally (after filling in config values):
   uv run main.py '{"prompt": "Hello", "customer_id": "CUST-123", "session_id": "s1"}'
