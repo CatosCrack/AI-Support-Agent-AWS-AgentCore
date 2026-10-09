@@ -319,7 +319,7 @@ agentcore invoke '{"prompt": "Do you remember my name and communication preferen
 ### Test 5 — Loyalty Discount Calculation
 
 ```bash
-agentcore invoke '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 standard order.", "customer_id": "CUST-123", "session_id": "t5"}'
+agentcore invoke '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 standard order.", "customer_id": "CUST-341", "session_id": "t5"}'
 # Expected: points redeemed, tier discount 10%, final total, remaining points
 ```
 
