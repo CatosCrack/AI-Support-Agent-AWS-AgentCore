@@ -4,11 +4,19 @@
 
 ---
 
+## Submission Checklist
+
+- [x] `main.py` with all TODOs completed
+- [x] Screenshots or terminal output for all 6 test scenarios **(png files found in test-screenshots)**
+- [x] Brief written reflection (200–400 words) **(found in test-screenshots/reflections.md)**
+
+---
+
 ## Overview
 
-In this project you will build a functional AI customer support agent for a fictional Amazon store. Starting from a simple local chatbot, you will progressively add cloud infrastructure, external tool integration, a knowledge base, persistent memory, a code interpreter, and a browser — finishing with a deployable agent that can handle customer inquiries end-to-end.
+In this project I built a functional AI customer support agent for a fictional Amazon store. Starting from a simple local chatbot, I progressively added cloud infrastructure, external tool integration, a knowledge base, persistent memory, a code interpreter, and a browser — finishing with a deployable agent that can handle customer inquiries end-to-end.
 
-By the end of the project your agent will be able to:
+By the end of the project the agent was able to:
 
 - Answer questions about products, return policies, and loyalty rewards using Retrieval-Augmented Generation (RAG)
 - Look up order status and process refunds by calling Lambda functions through the AgentCore Gateway
@@ -20,7 +28,7 @@ By the end of the project your agent will be able to:
 
 ## Learning Objectives
 
-After completing this project you will be able to:
+After completing this project I was able to:
 
 1. Deploy an AI agent to Amazon Bedrock AgentCore
 2. Wire up API Gateway and Lambda tools via the AgentCore Gateway using the Model Context Protocol (MCP)
@@ -72,7 +80,7 @@ Enable the following model in the Amazon Bedrock console under **Model access**:
 ```
 project/
 └── starter/
-    ├── main.py                  ← your starting point (fill in the TODOs)
+    ├── main.py                  ← starting point (fill in the TODOs)
     ├── setup_permissions.py     ← run after deployment to configure the agent role
     ├── pyproject.toml           ← Python dependencies
     ├── product_catalog.txt      ← upload to the Knowledge Base
@@ -97,7 +105,7 @@ uv sync --python 3.13
 ```
 
 Run the `agentcore` commands below from `starter/` using `uv run agentcore`
-if your virtual environment is not activated.
+if the virtual environment is not activated.
 
 ### Step 1.2 — Deploy the Lambda Functions
 
@@ -108,7 +116,7 @@ The two Lambda functions (`order_tracker.py` and `refund_processor.py`) are prov
    - `refund-processor`
 2. Paste the contents of each file into the inline code editor (or zip and upload).
 3. Attach an execution role with basic Lambda permissions (CloudWatch Logs).
-4. Note the ARN of each function — you will need them in the next step.
+4. Note the ARN of each function — needed them in the next step.
 
 ### Step 1.3 — Set Up API Gateway and AgentCore Gateway
 
@@ -152,13 +160,13 @@ Configure them as follows.
 **Verify with MCP Inspector:**
 ```bash
 npx @modelcontextprotocol/inspector
-# Connect to your Gateway URL and confirm the three order tools and three
+# Connect to the Gateway URL and confirm the three order tools and three
 # refund tools are listed. Names may be prefixed as target_name___tool_name.
 ```
 
 ### Step 1.4 — Create the Knowledge Base
 
-1. Upload `starter/product_catalog.txt` to an **S3 bucket** in your account.
+1. Upload `starter/product_catalog.txt` to an **S3 bucket** in the account.
 2. In **Amazon Bedrock AgentCore → Built-in tools → Knowledge Base**, choose
    **Create Managed Knowledge Base**:
    - Name: `CustomerSupportKB`
@@ -167,7 +175,7 @@ npx @modelcontextprotocol/inspector
    - Data source: the S3 bucket and `product_catalog.txt` from above
    - Use the default encryption settings
 3. **Sync** the data source and wait for the sync to complete.
-4. Copy the **Knowledge Base ID** — paste it into `KB_ID` in your `main.py`.
+4. Copy the **Knowledge Base ID** — paste it into `KB_ID` in `main.py`.
 
 **Verify:**
 ```bash
@@ -193,11 +201,9 @@ npx @modelcontextprotocol/inspector
 
 ## Part 2 — Building the Agent
 
-Open `starter/main.py`. It contains scaffolding and `# TODO` comments marking every section you need to implement. Work through the TODOs in order.
-
 ### Section 1 — Configuration and Initialisation
 
-Fill in your resource IDs and set up:
+Fill in the resource IDs and set up:
 - `BedrockAgentCoreApp`
 - `BedrockModel` with Amazon Nova 2 Lite
 - `MemoryClient` and `boto3` Bedrock runtime client
@@ -247,25 +253,24 @@ Implement the `invoke(payload, context)` function:
 
 ```bash
 # Configure the Starter Toolkit CLI (first time only)
-agentcore configure --entrypoint main.py --name <your-agent-name> --deployment-type direct_code_deploy --runtime PYTHON_3_13 --disable-memory
+agentcore configure --entrypoint main.py --name <agent-name> --deployment-type direct_code_deploy --runtime PYTHON_3_13 --disable-memory
 
 # Deploy the agent
 agentcore deploy
 ```
 
-`--disable-memory` disables only the toolkit's automatic memory creation; your
-agent uses the memory you created in Step 1.5. Let the toolkit create the runtime
+`--disable-memory` disables only the toolkit's automatic memory creation; the
+agent uses the memory created in Step 1.5. Let the toolkit create the runtime
 execution role when prompted.
 
-After deployment, run this from `starter/` using your student AWS credentials.
+After deployment, run this from `starter/` using updated AWS credentials.
 Make sure `KB_ID`, `MEMORY_ID` and `REGION` are filled in as strings in `main.py`:
 
 ```bash
 uv run setup_permissions.py
 ```
 
-This grants the agent access to your KB, memory and browser. Rerun it if you
-change your resource IDs or execution role.
+This grants the agent access to the KB, memory and browser.
 
 Wait briefly for the policy to take effect, then invoke the deployed agent:
 
@@ -276,8 +281,6 @@ agentcore invoke '{"prompt": "Hello, what can you help me with?", "customer_id":
 ---
 
 ## Part 3 — Functional Testing
-
-Run the following test scenarios and verify the expected behaviour. Include screenshots or copy the terminal output in your submission.
 
 ### Test 1 — Order Tracking
 
@@ -326,19 +329,6 @@ agentcore invoke '{"prompt": "I am a Gold member with 4250 points. Calculate my 
 agentcore invoke '{"prompt": "Go to https://www.udacity.com and tell me the page title.", "customer_id": "CUST-123", "session_id": "t6"}'
 # Expected: page title retrieved from live Udacity.com
 ```
-
----
-
-## Submission Checklist
-
-- [x] `main.py` with all TODOs completed
-- [x] Screenshots or terminal output for all 6 test scenarios
-- [x] Brief written reflection (200–400 words) covering:
-  - One design decision you made and why
-  - One challenge you encountered and how you solved it
-  - How you would extend this agent for a production environment
-
----
 
 ## Helpful References
 
