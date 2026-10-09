@@ -14,6 +14,8 @@ Invoke deployed agent:
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 # These imports are provided. Do not remove them.
+import textwrap
+
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.memory import MemoryClient
@@ -84,7 +86,13 @@ _bedrock_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
 def get_namespaces(mem_client: MemoryClient, memory_id: str) -> Dict:
     """Return a dict mapping strategy type → namespace template string."""
     strategies = mem_client.get_memory_strategies(memory_id=memory_id)
-    return { strategy["type"]: strategy["namespaces"][0] for strategy in strategies}
+    namespaces = {}
+    for strategy in strategies:
+        if "namespaceTemplates" in strategy and strategy["namespaceTemplates"]:
+            namespaces[strategy["type"]] = strategy["namespaceTemplates"][0]
+        elif "namespaces" in strategy and strategy["namespaces"]:
+            namespaces[strategy["type"]] = strategy["namespaces"][0]
+    return namespaces
 
 # ── Memory Hook ──────────────────────────────────────────────────────
 # Implement MemoryHook, a HookProvider subclass that adds long-term memory.
@@ -174,7 +182,7 @@ class MemoryHook(HookProvider):
                 memory_id=self.memory_id,
                 actor_id=self.actor_id,
                 session_id=self.session_id,
-                messages=[(messages.get("assistant", ""), "ASSISTANT"),(messages.get("user",""), "USER")]
+                messages=[(messages.get("user",""), "USER"),(messages.get("assistant", ""), "ASSISTANT")]
             )
 
     def register_hooks(self, registry: HookRegistry) -> None:  # type: ignore
@@ -251,56 +259,59 @@ def calculate_loyalty_discount(
         earn_rates = {{"standard": 1, "device": 2, "fresh": 5}}
         tier_rates = {{"Silver": 0.00, "Gold": 0.10, "Platinum": 0.15}}
 
-        floor_order_cap_in_points = ((order_total*0.5*0.01)//500)*500
-        floor_points = (loyalty_points//500)*500
+        max_points = int(order_total * 0.5 * 100)
+        points_redeemed = (min(loyalty_points, max_points) // 500) * 500
 
-        if floor_order_cap_in_points <= loyalty_points:
-            points_redeemed = min(floor_order_cap_in_points, floor_points)
-        else:
-            points_redeemed = floor_points
+        tier_rate = tier_rates.get(tier, 0)
+        order_subtotal = order_total - (points_redeemed * 0.01)
 
-        tier_discount = tier_rates.get(tier, 0)
-        order_subtotal = order_total - (points_redeemed*0.01)
+        tier_discount = order_subtotal * tier_rate
+        final_total = order_subtotal - tier_discount
+        total_savings = order_total - final_total
 
-        final_total = order_subtotal * (1-tier_discount)
-        total_savings = order_total-final_total
-        points_earned = (final_total*0.01)*earn_rates.get(product_category,1)
+        points_earned = int(final_total * earn_rates.get(product_category, 1))
         remaining_points = loyalty_points - points_redeemed + points_earned
 
         response = {{
-            "final_total":round(final_total, 2),
-            "total_savings":round(total_savings, 2),
-            "tier_discount":tier_discount,
-            "points_earned":int(points_earned),
-            "remaining_points":int(remaining_points)
+            "final_total": round(final_total, 2),
+            "total_savings": round(total_savings, 2),
+            "tier_discount": round(tier_discount, 2),
+            "tier_discount_pct": int(tier_rate * 100),
+            "points_redeemed": points_redeemed,
+            "points_earned": points_earned,
+            "remaining_points": remaining_points
         }}
-        
+
         print(json.dumps(response, indent=4))
     """
 
     try:
         with code_session(REGION) as code_client:
             response = code_client.invoke("executeCode", {
-                "code":code,
+                "code":textwrap.dedent(code),
                 "language":"python",
                 "clearContext":True
             })
 
         for event in response["stream"]:
-            return json.dumps(event["result"])
+            return event["result"]["structuredContent"]["stdout"]
 
     except Exception as e:
         tier_rates = {"Silver": 0.00, "Gold": 0.10, "Platinum": 0.15}
-        tier_discount = tier_rates.get("tier", 0)
-        final_total = order_total * (1-tier_discount)
+        tier_rate = tier_rates.get(tier, 0)
+        tier_discount = order_total * tier_rate
+        final_total = order_total - tier_discount
 
         response = {
-                    "final_total":round(final_total, 2),
-                    "total_savings":round(order_total-final_total, 2),
-                    "points_earned":0,
-                    "remaining_points":0
+            "final_total": round(final_total, 2),
+            "total_savings": round(tier_discount, 2),
+            "tier_discount": round(tier_discount, 2),
+            "tier_discount_pct": int(tier_rate * 100),
+            "points_redeemed": 0,
+            "points_earned": 0,
+            "remaining_points": loyalty_points
         }
-
+        return json.dumps(response)
 
 # ─— Agent Entrypoint ─────────────────────────────────────────────────
 # Implement the invoke() function decorated with @app.entrypoint.
